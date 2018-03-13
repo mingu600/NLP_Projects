@@ -1,15 +1,3 @@
-""" Some language modeling code.
-
-python lm.py  --model LstmLm --devid 1 --lr 0.01 --clip 2 --optim Adam --nlayers 2 --nhid 512 --dropout 0.5 --epochs 50 --bsz 128 --bptt 32 --tieweights
-Train: 42.90723478099889, Valid: 75.74921810452948, Test: 72.84913233987702
-
-python lm.py  --model NnLm --devid 3 --lr 0.001 --clip 0 --optim Adam --nlayers 2 --nhid 512 --dropout 0.5 --epochs 20 --bsz 64 --bptt 64
-Train: 71.58999479091389, Valid: 158.07431086368382, Test: 146.13046578572258
-
-Tested on torch.__version__ == 0.3.1b0+2b47480
-
-"""
-
 import argparse
 import torch
 import torch.nn as nn
@@ -115,27 +103,6 @@ class Lm(nn.Module):
             valid_loss += loss(out.view(-1, model.vsize), y.view(-1))
             nwords += y.ne(padidx).int().sum()
         return valid_loss.data[0], nwords.data[0]
-
-    def generate_predictions(self):
-        self.eval()
-        data = torchtext.datasets.LanguageModelingDataset(
-            path="input.txt",
-            text_field=TEXT)
-        data_iter = torchtext.data.BPTTIterator(data, 211, 12, device=args.devid, train=False)
-        outputs = [[] for _ in range(211)]
-        print()
-        print("Generating Kaggle predictions")
-        for batch in tqdm(data_iter):
-            scores, idxs = self(batch.text, None)[0][-3].topk(20, dim=-1)
-            for i in range(idxs.size(0)):
-                outputs[i].append([TEXT.vocab.itos[x] for x in idxs[i].data.tolist()])
-        with open(self.__class__.__name__ + ".preds.txt", "w") as f:
-            f.write("id,word\n")
-            ok = 1
-            for sentences in outputs:
-                f.write("\n".join(["{},{}".format(ok+i, " ".join(x)) for i, x in enumerate(sentences)]))
-                f.write("\n")
-                ok += len(sentences)
 
 class NnLm(Lm):
     """ Feedforward neural network LM, pretends each bptt sequence is a sentence. """
